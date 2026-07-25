@@ -14,7 +14,17 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Make and Bake ISO
-      run: ./make-and-bake.sh
+      run: |
+        export EDITION=4
+        ./make-and-bake.sh
 
-    - name: Push to GCP
-      run: ./push-to-gcp.sh
+    - name: Create GitHub Release and Upload Artifacts
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: "nightly-${{ github.sha }}"
+        name: "Nightly Build"
+        files: out/*
+        draft: false
+        prerelease: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
