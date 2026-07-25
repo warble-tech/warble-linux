@@ -1,0 +1,6 @@
+/out/
+/tmp/
+*.iso
+*.tar.gz
+*.box
+*.ovf
