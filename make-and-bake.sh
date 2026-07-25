@@ -23,7 +23,6 @@ PROFILE_DIR="./profile"
 mkdir -p "$PROFILE_DIR"
 PKG_FILE="$PROFILE_DIR/packages.x86_64"
 
-# Base packages common to all editions
 cat <<EOF > "$PKG_FILE"
 base
 linux
@@ -33,10 +32,11 @@ nftables
 iproute2
 sudo
 dialog
-sway
-swaybg
-xorg-xwayland
-wl-clipboard
+openbox
+xorg-server
+xorg-xinit
+firefox
+asciinema
 virtualbox-guest-utils-nox
 terminator
 EOF

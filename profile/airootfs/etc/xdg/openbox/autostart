@@ -1,0 +1,2 @@
+# Run Firefox with DuckDuckGo on startup
+firefox "https://duckduckgo.com" &
