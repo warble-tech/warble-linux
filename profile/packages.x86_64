@@ -1,0 +1,43 @@
+# Base System
+base
+linux
+linux-firmware
+mkinitcpio
+
+# Security & Networking
+nftables
+iproute2
+iputils
+dhcpcd
+
+# Core Dependencies
+sudo
+dialog
+git
+curl
+wget
+tar
+unzip
+
+# Development
+neovim
+python
+go
+rust
+nodejs
+npm
+
+# Kubernetes & Containers
+k3s
+containerd
+kubectl
+helm
+
+# Display & Apps (Minimal Wayland environment to support Firefox + Terminator)
+sway
+swaybg
+xorg-xwayland
+terminator
+firefox
+ttf-dejavu
+wl-clipboard

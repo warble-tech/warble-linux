@@ -1,0 +1,20 @@
+name: Publish to GCP
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build_and_publish:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Make and Bake ISO
+      run: ./make-and-bake.sh
+
+    - name: Push to GCP
+      run: ./push-to-gcp.sh
