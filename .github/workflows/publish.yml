@@ -1,5 +1,6 @@
 name: Build artifacts
 
+# GitHub-hosted public runners only (ubuntu-latest). No self-hosted runners.
 on:
   push:
     branches: [main]
@@ -14,9 +15,15 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: warble-linux-build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
+    name: bake (ubuntu-latest public runner)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,14 +38,15 @@ jobs:
           EDITION: ${{ github.event.inputs.edition || '4' }}
           VERSION: ${{ github.ref_name }}-${{ github.run_number }}
           GIT_SHA: ${{ github.sha }}
-          # Real archiso needs Arch; CI produces valid mock artifacts until then
+          # Public runners have no archiso; mock produces valid non-empty assets.
+          # Set MOCK_ONLY=0 still allows auto-fallback when mkarchiso is absent.
           MOCK_ONLY: "0"
         run: |
           chmod +x ./make-and-bake.sh
           ./make-and-bake.sh
           echo "==> out/"
           ls -la out/
-          # Guard: refuse 0-byte uploads
+          # Guard: refuse 0-byte uploads (GitHub Releases require size >= 1)
           find out -type f -size 0 -print -exec false {} + || {
             echo "Empty files in out/ — aborting"
             find out -type f -exec ls -la {} \;
@@ -60,11 +68,12 @@ jobs:
           tag_name: nightly-${{ github.run_number }}-${{ github.sha }}
           name: "Nightly build #${{ github.run_number }}"
           body: |
-            Automated Warble Linux artifact build.
+            Automated Warble Linux artifact build on **GitHub-hosted `ubuntu-latest`**.
 
             - Edition: ${{ github.event.inputs.edition || '4' }} (default full on push)
             - Commit: `${{ github.sha }}`
-            - Note: If `mkarchiso` is not on the runner, ISO is a **mock** package (see MANIFEST).
+            - Runner: public GitHub Actions (no self-hosted)
+            - Note: Without `mkarchiso`, ISO is a **mock** package (see MANIFEST in assets).
 
             Download assets below.
           files: out/*

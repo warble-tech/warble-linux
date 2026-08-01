@@ -44,7 +44,9 @@ Interactive menu (needs `dialog` + TTY):
 ./make-and-bake.sh
 ```
 
-## CI artifacts
+## CI artifacts (GitHub-hosted public runners)
+
+CI uses **GitHub-hosted `ubuntu-latest` only** — no self-hosted runners.
 
 On every push to `main`:
 
@@ -53,6 +55,8 @@ On every push to `main`:
 3. A **prerelease** is created with non-empty assets
 
 Workflow: [`.github/workflows/publish.yml`](.github/workflows/publish.yml)
+
+> Real bootable ISOs need `mkarchiso` (Arch). Public Ubuntu runners produce **valid mock** packages until we add a Docker/Arch bake job on the same public runners.
 
 ## Mount helpers (inside live image)
 
