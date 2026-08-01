@@ -1,16 +1,14 @@
-# Base System
+# Base (archiso)
 base
 linux
 linux-firmware
 mkinitcpio
-
-# Security & Networking
+syslinux
+# Networking / admin
 nftables
 iproute2
 iputils
 dhcpcd
-
-# Core Dependencies
 sudo
 dialog
 git
@@ -18,26 +16,23 @@ curl
 wget
 tar
 unzip
-
-# Development
-neovim
-python
-go
-rust
-nodejs
-npm
-
-# Kubernetes & Containers
-k3s
-containerd
-kubectl
-helm
-
-# Display & Apps (Minimal Wayland environment to support Firefox + Terminator)
-sway
-swaybg
-xorg-xwayland
-terminator
+# GUI minimal
+openbox
+xorg-server
+xorg-xinit
+xterm
 firefox
 ttf-dejavu
-wl-clipboard
+terminator
+# Guest helpers (optional; ignored if unavailable in build env)
+# virtualbox-guest-utils-nox
+go
+rust
+python
+python-pip
+nodejs
+npm
+neovim
+docker
+kubectl
+helm

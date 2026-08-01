@@ -1,32 +1,74 @@
-name: Publish to GCP
+name: Build artifacts
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [main]
+  pull_request:
   workflow_dispatch:
+    inputs:
+      edition:
+        description: "Edition 1=minimal 2=developer 3=cloud 4=full"
+        required: false
+        default: "4"
+
+permissions:
+  contents: write
 
 jobs:
-  build_and_publish:
+  build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Make and Bake ISO
-      run: |
-        export EDITION=4
-        ./make-and-bake.sh
+      - name: Install ISO tools (for non-empty mock ISO)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq genisoimage xorriso || true
 
-    - name: Create GitHub Release and Upload Artifacts
-      uses: softprops/action-gh-release@v2
-      with:
-        tag_name: "nightly-${{ github.sha }}"
-        name: "Nightly Build"
-        files: out/*
-        draft: false
-        prerelease: true
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Make and bake
+        env:
+          EDITION: ${{ github.event.inputs.edition || '4' }}
+          VERSION: ${{ github.ref_name }}-${{ github.run_number }}
+          GIT_SHA: ${{ github.sha }}
+          # Real archiso needs Arch; CI produces valid mock artifacts until then
+          MOCK_ONLY: "0"
+        run: |
+          chmod +x ./make-and-bake.sh
+          ./make-and-bake.sh
+          echo "==> out/"
+          ls -la out/
+          # Guard: refuse 0-byte uploads
+          find out -type f -size 0 -print -exec false {} + || {
+            echo "Empty files in out/ — aborting"
+            find out -type f -exec ls -la {} \;
+            exit 1
+          }
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: warble-linux-edition-${{ github.event.inputs.edition || '4' }}-${{ github.sha }}
+          path: out/*
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Create GitHub Release (main only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nightly-${{ github.run_number }}-${{ github.sha }}
+          name: "Nightly build #${{ github.run_number }}"
+          body: |
+            Automated Warble Linux artifact build.
+
+            - Edition: ${{ github.event.inputs.edition || '4' }} (default full on push)
+            - Commit: `${{ github.sha }}`
+            - Note: If `mkarchiso` is not on the runner, ISO is a **mock** package (see MANIFEST).
+
+            Download assets below.
+          files: out/*
+          prerelease: true
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
