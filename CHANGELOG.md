@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- `scripts/test-artifacts.sh` + `make test-artifacts` / `make release-check`
+  (ISO type, WSL tar, OVF, Vagrant box, MANIFEST, SHA256SUMS, zero-byte guard).
+- CI job `test-matrix` downloads all edition artifacts and runs the suite before prerelease.
+
 ### Changed
 
 - **Open-source redesign**: modular `editions/` package lists, `scripts/` layout,

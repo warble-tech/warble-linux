@@ -44,6 +44,8 @@ cd warble-linux
 
 make bake EDITION=1       # one edition
 make all-editions         # 1–4 → out/
+make test-artifacts       # validate ISO / WSL / OVF / box / checksums
+make release-check        # lint + all editions + artifact tests
 make check                # lint + mock minimal bake
 ```
 

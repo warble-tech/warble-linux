@@ -1,7 +1,7 @@
 # Warble Linux — developer entry points
 # https://github.com/warble-tech/warble-linux
 
-.PHONY: help bake all-editions clean mock lint check
+.PHONY: help bake all-editions clean mock lint check test-artifacts release-check
 
 EDITION ?= 1
 MOCK_ONLY ?= 0
@@ -13,6 +13,8 @@ help:
 	@echo "  make bake EDITION=1|2|3|4   Build one edition (default: 1)"
 	@echo "  make all-editions           Build editions 1–4"
 	@echo "  make mock EDITION=4         Force mock artifacts"
+	@echo "  make test-artifacts         Validate out/ (size, tar, OVF, checksums)"
+	@echo "  make release-check          all-editions + test-artifacts"
 	@echo "  make clean                  Remove out/ and work dirs"
 	@echo "  make lint                   Shell syntax check"
 	@echo "  make check                  lint + mock bake edition 1"
@@ -38,12 +40,23 @@ lint:
 	@bash -n scripts/make-and-bake.sh
 	@bash -n scripts/build-all-editions.sh
 	@bash -n scripts/push-to-gcp.sh
+	@bash -n scripts/test-artifacts.sh
 	@for f in profile/airootfs/usr/local/bin/*.sh profile/airootfs/etc/profile.d/*.sh; do \
 	  bash -n "$$f" || exit 1; \
 	done
 	@echo "lint OK"
 
+test-artifacts:
+	@chmod +x scripts/test-artifacts.sh
+	./scripts/test-artifacts.sh
+
+release-check: lint
+	@chmod +x scripts/build-all-editions.sh scripts/make-and-bake.sh scripts/test-artifacts.sh
+	./scripts/build-all-editions.sh
+	./scripts/test-artifacts.sh
+
 check: lint
 	MOCK_ONLY=1 EDITION=1 ./scripts/make-and-bake.sh
-	@test -s out/MANIFEST-minimal-*.txt || test -n "$$(ls out/MANIFEST-minimal-*.txt 2>/dev/null)"
-	@echo "check OK"
+	@test -n "$$(ls out/MANIFEST-minimal-*.txt 2>/dev/null)"
+	@test -n "$$(ls out/warble-linux-minimal-*.iso 2>/dev/null)"
+	@echo "check OK (full matrix: make release-check)"

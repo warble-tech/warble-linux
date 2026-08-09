@@ -7,6 +7,8 @@ No Arch tools required. Produces **mock** (non-bootable) release artifacts that 
 ```bash
 make bake EDITION=1          # minimal
 make all-editions            # all four editions → out/
+make test-artifacts          # validate ISO / WSL / OVF / box / checksums
+make release-check           # lint + all-editions + test-artifacts
 ```
 
 Or:

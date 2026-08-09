@@ -39,7 +39,7 @@ jobs:
           GIT_SHA: ${{ github.sha }}
           MOCK_ONLY: "0"
         run: |
-          chmod +x scripts/make-and-bake.sh make-and-bake.sh
+          chmod +x scripts/*.sh make-and-bake.sh
           make bake EDITION="${{ matrix.edition }}"
           ls -la out/
           find out -type f -size 0 -print -exec false {} + || {
@@ -56,9 +56,31 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  # Merge all edition artifacts and run the full matrix test suite
+  test-matrix:
+    name: test all artifacts
+    needs: bake
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all edition artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: out
+          pattern: warble-linux-edition-*
+          merge-multiple: true
+
+      - name: Run artifact tests
+        run: |
+          chmod +x scripts/test-artifacts.sh
+          ls -la out/
+          OUT_DIR="$PWD/out" ./scripts/test-artifacts.sh
+
   release:
     name: prerelease (main)
-    needs: bake
+    needs: [bake, test-matrix]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
