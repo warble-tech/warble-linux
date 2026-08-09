@@ -1,0 +1,20 @@
+# Edition 4 — Full (Developer + Cloud-Native)
+# Union of developer.packages and cloud-native.packages (duplication OK; build script unique-sorts).
+
+go
+rust
+python
+python-pip
+nodejs
+npm
+neovim
+base-devel
+ripgrep
+fd
+jq
+tmux
+docker
+docker-compose
+kubectl
+helm
+yq

@@ -1,20 +1,24 @@
-# Community Support & Contributing Guidelines
+# Support
 
-Welcome to the Warble-Tech open source community! We actively support our two flagship projects:
-- **Warble-Linux**
-- **Starling-CLI**
+## Community
 
-## Where to get help
-- **Warble-Linux Discord**: Join our [Discord Server](https://discord.gg/tNeX6Zwrw) for real-time chat with the core maintainers.
-- **Forums**: Post longer technical questions on our [Community Forums](#).
-- **GitHub Issues**: If you have found a bug or have a feature request, please open an issue in the respective repository.
+- **GitHub Issues** — bugs and feature requests for this repository
+- **GitHub Discussions** — longer design questions (enable when the org prefers)
+- **Discord** — [Warble community](https://discord.gg/tNeX6Zwrw) (real-time chat)
 
-## How to Contribute
-1. Fork the repository.
-2. Create your feature branch (`git checkout -b feature/amazing-feature`).
-3. Commit your changes (`git commit -m 'Add some amazing feature'`).
-4. Push to the branch (`git push origin feature/amazing-feature`).
-5. Open a Pull Request.
+Sibling project: **Starling-CLI** (see Warble org repos).
 
-## Code of Conduct
-We are committed to providing a welcoming and inspiring community for all. Please review our [Code of Conduct](CODE_OF_CONDUCT.md) before participating.
+## Before you open an issue
+
+1. Confirm whether you used a **mock** or **real** ISO (`mock=yes` in `MANIFEST-*.txt`).
+2. Note **edition** (1–4), host OS, and `make` / script command used.
+3. Search existing issues for duplicates.
+
+## Security
+
+Do not file public issues for vulnerabilities. Use [SECURITY.md](SECURITY.md).
+
+## Maintainers
+
+Please be patient with response times on a small open-source project. PRs with
+tests (`make check`) and clear docs are the fastest path to merge.

@@ -1,0 +1,10 @@
+# Edition 3 — Cloud-Native
+# Official Arch packages. k3s/rancher install via airootfs hooks when enabled.
+
+docker
+docker-compose
+kubectl
+helm
+jq
+yq
+git

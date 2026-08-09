@@ -6,11 +6,6 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
-    inputs:
-      edition:
-        description: "Edition 1=minimal 2=developer 3=cloud 4=full"
-        required: false
-        default: "4"
 
 permissions:
   contents: write
@@ -20,33 +15,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: bake (ubuntu-latest public runner)
+  bake:
+    name: edition ${{ matrix.edition }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        edition: [1, 2, 3, 4]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install ISO tools (for non-empty mock ISO)
+      - name: Install tools
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq genisoimage xorriso || true
+          sudo apt-get install -y -qq genisoimage xorriso make || true
 
       - name: Make and bake
         env:
-          EDITION: ${{ github.event.inputs.edition || '4' }}
+          EDITION: ${{ matrix.edition }}
           VERSION: ${{ github.ref_name }}-${{ github.run_number }}
           GIT_SHA: ${{ github.sha }}
-          # Public runners have no archiso; mock produces valid non-empty assets.
-          # Set MOCK_ONLY=0 still allows auto-fallback when mkarchiso is absent.
           MOCK_ONLY: "0"
         run: |
-          chmod +x ./make-and-bake.sh
-          ./make-and-bake.sh
-          echo "==> out/"
+          chmod +x scripts/make-and-bake.sh make-and-bake.sh
+          make bake EDITION="${{ matrix.edition }}"
           ls -la out/
-          # Guard: refuse 0-byte uploads (GitHub Releases require size >= 1)
           find out -type f -size 0 -print -exec false {} + || {
             echo "Empty files in out/ — aborting"
             find out -type f -exec ls -la {} \;
@@ -56,13 +51,30 @@ jobs:
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: warble-linux-edition-${{ github.event.inputs.edition || '4' }}-${{ github.sha }}
+          name: warble-linux-edition-${{ matrix.edition }}-${{ github.sha }}
           path: out/*
           if-no-files-found: error
           retention-days: 14
 
-      - name: Create GitHub Release (main only)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  release:
+    name: prerelease (main)
+    needs: bake
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all edition artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          pattern: warble-linux-edition-*
+          merge-multiple: true
+
+      - name: Guard non-empty assets
+        run: |
+          find release-assets -type f | sort
+          find release-assets -type f -size 0 -print -exec false {} +
+
+      - name: Create GitHub prerelease
         uses: softprops/action-gh-release@v2
         with:
           tag_name: nightly-${{ github.run_number }}-${{ github.sha }}
@@ -70,13 +82,13 @@ jobs:
           body: |
             Automated Warble Linux artifact build on **GitHub-hosted `ubuntu-latest`**.
 
-            - Edition: ${{ github.event.inputs.edition || '4' }} (default full on push)
+            - Editions: **1–4** (minimal, developer, cloud-native, full)
             - Commit: `${{ github.sha }}`
             - Runner: public GitHub Actions (no self-hosted)
-            - Note: Without `mkarchiso`, ISO is a **mock** package (see MANIFEST in assets).
+            - Note: Without complete archiso bootloaders / `mkarchiso`, ISO packages are **mock** (see MANIFEST assets).
 
-            Download assets below.
-          files: out/*
+            Rebuild locally: `make all-editions`
+          files: release-assets/*
           prerelease: true
           fail_on_unmatched_files: true
         env:

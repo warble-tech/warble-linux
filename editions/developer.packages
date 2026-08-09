@@ -1,0 +1,15 @@
+# Edition 2 — Developer & GenAI
+# Official Arch packages only. AUR-only tools (ollama, vscodium, goose) ship via post-boot hooks later.
+
+go
+rust
+python
+python-pip
+nodejs
+npm
+neovim
+base-devel
+ripgrep
+fd
+jq
+tmux
