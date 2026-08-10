@@ -1,26 +1,30 @@
 # Warble Linux — developer entry points
 # https://github.com/warble-tech/warble-linux
 
-.PHONY: help bake all-editions clean mock lint check test-artifacts release-check sync-bootloaders
+.PHONY: help bake all-editions clean mock lint check test-artifacts release-check sync-bootloaders version bump-patch bump-minor bump-major
 
 EDITION ?= 1
 MOCK_ONLY ?= 0
 export EDITION MOCK_ONLY
 
 help:
-	@echo "Warble Linux"
+	@echo "Warble Linux  $$(cat VERSION 2>/dev/null || echo '?')"
 	@echo ""
 	@echo "  make bake EDITION=1|2|3|4   Build one edition (default: 1)"
 	@echo "  make all-editions           Build editions 1–4"
 	@echo "  make mock EDITION=4         Force mock artifacts"
 	@echo "  make test-artifacts         Validate out/ (size, tar, OVF, checksums)"
 	@echo "  make release-check          all-editions + test-artifacts"
+	@echo "  make version                Print VERSION (semver)"
+	@echo "  make bump-patch|minor|major Bump VERSION file"
 	@echo "  make sync-bootloaders       Refresh syslinux/grub/efiboot from archiso"
 	@echo "  make clean                  Remove out/ and work dirs"
 	@echo "  make lint                   Shell syntax check"
 	@echo "  make check                  lint + mock bake edition 1"
 	@echo ""
 	@echo "Editions: 1=minimal 2=developer 3=cloud-native 4=full"
+	@echo "Release:  git tag v\$$(cat VERSION) && git push origin v\$$(cat VERSION)"
+	@echo "          or: gh workflow run release.yml -f bump=patch"
 
 bake:
 	@chmod +x scripts/make-and-bake.sh
@@ -44,6 +48,7 @@ lint:
 	@bash -n scripts/test-artifacts.sh
 	@bash -n scripts/sync-bootloaders.sh
 	@bash -n scripts/docker-bake.sh
+	@bash -n scripts/version.sh
 	@for f in profile/airootfs/usr/local/bin/*.sh profile/airootfs/etc/profile.d/*.sh; do \
 	  bash -n "$$f" || exit 1; \
 	done
@@ -68,3 +73,22 @@ check: lint
 sync-bootloaders:
 	@chmod +x scripts/sync-bootloaders.sh
 	./scripts/sync-bootloaders.sh
+
+version:
+	@chmod +x scripts/version.sh
+	@./scripts/version.sh print
+
+bump-patch:
+	@chmod +x scripts/version.sh
+	@./scripts/version.sh bump patch
+	@echo "VERSION is now $$(cat VERSION)"
+
+bump-minor:
+	@chmod +x scripts/version.sh
+	@./scripts/version.sh bump minor
+	@echo "VERSION is now $$(cat VERSION)"
+
+bump-major:
+	@chmod +x scripts/version.sh
+	@./scripts/version.sh bump major
+	@echo "VERSION is now $$(cat VERSION)"

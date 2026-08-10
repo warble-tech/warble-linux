@@ -7,29 +7,35 @@
 **Sandbox-oriented Linux live images** for isolated testing, learning, and
 cloud-native workflows — open source, rebuildable, multi-format.
 
-[![Build artifacts](https://github.com/warble-tech/warble-linux/actions/workflows/publish.yml/badge.svg)](https://github.com/warble-tech/warble-linux/actions/workflows/publish.yml)
+[![Build & nightly](https://github.com/warble-tech/warble-linux/actions/workflows/publish.yml/badge.svg)](https://github.com/warble-tech/warble-linux/actions/workflows/publish.yml)
+[![Release](https://github.com/warble-tech/warble-linux/actions/workflows/release.yml/badge.svg)](https://github.com/warble-tech/warble-linux/actions/workflows/release.yml)
 [![License: GPL-2.0](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](LICENSE)
+[![semver](https://img.shields.io/badge/semver-0.2.0-blue.svg)](VERSION)
 
 Part of the Warble ecosystem · MCP ops demo: [mcp.warbleoss.org](https://mcp.warbleoss.org)
 
-## Download nightly
+## Releases & versioning
 
-Prebuilt artifacts for all four editions ship as **GitHub prereleases** on every
-push to `main` (mock ISO on Ubuntu CI; real ISO when baked with archiso).
+**[Semver](https://semver.org/)** lives in [`VERSION`](VERSION). Details: [docs/releases.md](docs/releases.md).
+
+| Kind | Tag | Trigger |
+|------|-----|---------|
+| **Stable** | `vX.Y.Z` | Tag push or [Release workflow](https://github.com/warble-tech/warble-linux/actions/workflows/release.yml) |
+| **Nightly** | `vX.Y.Z-nightly.N` | Push to `main` (GitHub prerelease) |
 
 | | |
 |--|--|
-| **Latest prerelease** | [github.com/warble-tech/warble-linux/releases](https://github.com/warble-tech/warble-linux/releases/latest) |
-| **All nightlies** | [Releases](https://github.com/warble-tech/warble-linux/releases) |
-| **Example** | [Nightly #8](https://github.com/warble-tech/warble-linux/releases/tag/nightly-8-69c133d3076f13b7edc7e474ff1e755dafa3bade) (editions 1–4 · ISO · WSL · OVF · `.box` · MANIFEST · SHA256SUMS) |
-
-Each asset set includes `MANIFEST-*.txt` (`mock=yes|no`) and `SHA256SUMS-*.txt`.
-Verify checksums before use. **Mock** ISOs are not bootable; they validate the
-packaging pipeline until a full archiso bake is published.
+| **Latest stable** | [Releases · Latest](https://github.com/warble-tech/warble-linux/releases/latest) |
+| **All releases** | [github.com/warble-tech/warble-linux/releases](https://github.com/warble-tech/warble-linux/releases) |
 
 ```bash
-# After download
-sha256sum -c SHA256SUMS-full-*.txt
+sha256sum -c SHA256SUMS-full-*.txt   # after download
+
+# Maintainers — cut a stable release
+make bump-patch
+git add VERSION && git commit -m "chore(release): v$(cat VERSION)"
+git tag "v$(cat VERSION)" && git push origin main --tags
+# or: gh workflow run release.yml -f bump=patch
 ```
 
 ---

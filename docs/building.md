@@ -83,11 +83,18 @@ disk/time. Inspect `MANIFEST-*.txt` for `mock=no` after success.
 | Variable | Default | Meaning |
 |----------|---------|---------|
 | `EDITION` | `1` (or dialog) | `1`–`4` |
-| `VERSION` | UTC `YYYY.MM.DD` | Version string in filenames |
+| `VERSION` | contents of `VERSION` (semver) | Version string in filenames |
 | `GIT_SHA` | short git HEAD | Embedded in ISO name |
 | `OUT_DIR` | `./out` | Artifact directory |
 | `WORK_DIR` | `/tmp/warble-linux-work` | Scratch |
 | `MOCK_ONLY` | `0` | Force mock path when `1` |
+
+## Semver & releases
+
+- Source of truth: root [`VERSION`](../VERSION) file (`X.Y.Z`).
+- Helpers: `./scripts/version.sh print|bump|nightly|tag` · `make version` · `make bump-patch`.
+- **Nightly** (CI on `main`): GitHub prerelease tag `vX.Y.Z-nightly.N` — workflow [`.github/workflows/publish.yml`](../.github/workflows/publish.yml).
+- **Stable**: push tag `vX.Y.Z` or run **Release** — workflow [`.github/workflows/release.yml`](../.github/workflows/release.yml).
 
 ## Optional GCP publish
 

@@ -15,7 +15,14 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-VERSION="${VERSION:-$(date -u +%Y.%m.%d)}"
+# Prefer explicit VERSION, then VERSION file (semver X.Y.Z), then UTC date
+if [[ -z "${VERSION:-}" ]]; then
+  if [[ -f "$ROOT/VERSION" ]]; then
+    VERSION="$(tr -d '[:space:]' <"$ROOT/VERSION")"
+  else
+    VERSION="$(date -u +%Y.%m.%d)"
+  fi
+fi
 GIT_SHA="${GIT_SHA:-$(git rev-parse --short HEAD 2>/dev/null || echo local)}"
 WORK_DIR="${WORK_DIR:-/tmp/warble-linux-work}"
 OUT_DIR="${OUT_DIR:-$ROOT/out}"

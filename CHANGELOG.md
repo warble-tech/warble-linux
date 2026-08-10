@@ -8,21 +8,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- `scripts/test-artifacts.sh` + `make test-artifacts` / `make release-check`
-  (ISO type, WSL tar, OVF, Vagrant box, MANIFEST, SHA256SUMS, zero-byte guard).
-- CI job `test-matrix` downloads all edition artifacts and runs the suite before prerelease.
+- (none yet)
+
+## [0.2.0] — 2026-08-10
+
+### Added
+
+- Semver **`VERSION`** file + `scripts/version.sh` (`print` / `bump` / `nightly` / `tag`).
+- GitHub Actions **Release** workflow (tag `vX.Y.Z` or dispatch with bump/set).
+- Nightly prereleases use semver tags: `vX.Y.Z-nightly.N`.
+- `scripts/test-artifacts.sh` + `make test-artifacts` / `make release-check`.
+- CI `test-matrix` job before prerelease/release.
 - archiso **releng** bootloaders under `profile/{syslinux,grub,efiboot}` (rebranded)
   + `scripts/sync-bootloaders.sh`, `scripts/docker-bake.sh`, `docs/bootloaders.md`.
-- README **Download nightly** section (releases + Nightly #8 example).
+- README releases & versioning section.
 
 ### Changed
 
 - **Open-source redesign**: modular `editions/` package lists, `scripts/` layout,
   `Makefile`, architecture/building docs, CONTRIBUTING / CoC / SECURITY.
-- Bake script refuses real `mkarchiso` when syslinux/grub trees are missing
+- Bake prefers `VERSION` file for artifact filenames (over date-only).
+- Bake refuses real `mkarchiso` when syslinux/grub trees are missing
   (avoids half-broken profiles) and falls back to mock artifacts.
-- CI builds all four editions via matrix; root `make-and-bake.sh` remains a
-  compatibility wrapper.
 
 ### Fixed
 

@@ -1,6 +1,7 @@
-name: Build artifacts
+name: Build & nightly
 
 # GitHub-hosted public runners only (ubuntu-latest). No self-hosted runners.
+# Nightly prereleases use semver: vX.Y.Z-nightly.N (from VERSION file).
 on:
   push:
     branches: [main]
@@ -15,8 +16,30 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  version:
+    name: resolve version
+    runs-on: ubuntu-latest
+    outputs:
+      semver: ${{ steps.v.outputs.semver }}
+      nightly_tag: ${{ steps.v.outputs.nightly_tag }}
+      artifact_version: ${{ steps.v.outputs.artifact_version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        run: |
+          chmod +x scripts/version.sh
+          SEMVER=$(./scripts/version.sh print | tr -d '\n')
+          NIGHTLY_TAG=$(./scripts/version.sh nightly "${{ github.run_number }}")
+          # Filename-safe: 0.2.0-nightly.12 (no leading v)
+          ARTIFACT_VERSION="${SEMVER}-nightly.${{ github.run_number }}"
+          echo "semver=$SEMVER" >> "$GITHUB_OUTPUT"
+          echo "nightly_tag=$NIGHTLY_TAG" >> "$GITHUB_OUTPUT"
+          echo "artifact_version=$ARTIFACT_VERSION" >> "$GITHUB_OUTPUT"
+          echo "semver=$SEMVER nightly_tag=$NIGHTLY_TAG artifact=$ARTIFACT_VERSION"
+
   bake:
     name: edition ${{ matrix.edition }}
+    needs: version
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -35,7 +58,7 @@ jobs:
       - name: Make and bake
         env:
           EDITION: ${{ matrix.edition }}
-          VERSION: ${{ github.ref_name }}-${{ github.run_number }}
+          VERSION: ${{ needs.version.outputs.artifact_version }}
           GIT_SHA: ${{ github.sha }}
           MOCK_ONLY: "0"
         run: |
@@ -56,10 +79,9 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  # Merge all edition artifacts and run the full matrix test suite
   test-matrix:
     name: test all artifacts
-    needs: bake
+    needs: [version, bake]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -78,12 +100,15 @@ jobs:
           ls -la out/
           OUT_DIR="$PWD/out" ./scripts/test-artifacts.sh
 
-  release:
-    name: prerelease (main)
-    needs: [bake, test-matrix]
+  nightly:
+    name: semver nightly prerelease
+    needs: [version, bake, test-matrix]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Download all edition artifacts
         uses: actions/download-artifact@v4
         with:
@@ -96,22 +121,35 @@ jobs:
           find release-assets -type f | sort
           find release-assets -type f -size 0 -print -exec false {} +
 
-      - name: Create GitHub prerelease
+      - name: Create semver prerelease
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: nightly-${{ github.run_number }}-${{ github.sha }}
-          name: "Nightly build #${{ github.run_number }}"
+          tag_name: ${{ needs.version.outputs.nightly_tag }}
+          name: "v${{ needs.version.outputs.semver }} nightly #${{ github.run_number }}"
           body: |
-            Automated Warble Linux artifact build on **GitHub-hosted `ubuntu-latest`**.
+            ## Warble Linux `${{ needs.version.outputs.nightly_tag }}`
 
-            - Editions: **1–4** (minimal, developer, cloud-native, full)
-            - Commit: `${{ github.sha }}`
-            - Runner: public GitHub Actions (no self-hosted)
-            - Note: Without complete archiso bootloaders / `mkarchiso`, ISO packages are **mock** (see MANIFEST assets).
+            Automated **prerelease** from `main` (semver base **${{ needs.version.outputs.semver }}**).
 
-            Rebuild locally: `make all-editions`
+            | | |
+            |--|--|
+            | **Tag** | `${{ needs.version.outputs.nightly_tag }}` |
+            | **Artifact version** | `${{ needs.version.outputs.artifact_version }}` |
+            | **Commit** | `${{ github.sha }}` |
+            | **Editions** | 1 minimal · 2 developer · 3 cloud-native · 4 full |
+            | **Runner** | GitHub-hosted `ubuntu-latest` |
+
+            Assets: ISO · WSL tarball · OVF · Vagrant `.box` · MANIFEST · SHA256SUMS.
+
+            > Public runners have no `mkarchiso`. Check `mock=` in each MANIFEST.
+            > Stable releases: push a `vX.Y.Z` tag or run **Release** workflow.
+
+            ```bash
+            make release-check
+            ```
           files: release-assets/*
           prerelease: true
+          generate_release_notes: true
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

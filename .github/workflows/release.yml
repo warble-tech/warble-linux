@@ -1,0 +1,230 @@
+name: Release
+
+# Stable semver releases: tag vX.Y.Z or dispatch with bump/set.
+# GitHub-hosted ubuntu-latest only.
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Bump VERSION then tag (ignored if version is set)"
+        type: choice
+        options:
+          - none
+          - patch
+          - minor
+          - major
+        default: patch
+      version:
+        description: "Exact semver X.Y.Z (optional; overrides bump when set)"
+        required: false
+        default: ""
+      prerelease:
+        description: "Mark GitHub Release as prerelease"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: warble-linux-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: prepare version & tag
+    runs-on: ubuntu-latest
+    outputs:
+      semver: ${{ steps.prep.outputs.semver }}
+      tag: ${{ steps.prep.outputs.tag }}
+      artifact_version: ${{ steps.prep.outputs.artifact_version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve version
+        id: prep
+        env:
+          INPUT_BUMP: ${{ github.event.inputs.bump || 'none' }}
+          INPUT_VERSION: ${{ github.event.inputs.version || '' }}
+          REF_NAME: ${{ github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          chmod +x scripts/version.sh
+
+          if [[ "$EVENT_NAME" == "push" && "$REF_NAME" == v* ]]; then
+            # Tag push: v1.2.3 or v1.2.3-rc.1 → strip leading v for VERSION file style base
+            TAG="$REF_NAME"
+            # Stable X.Y.Z only for VERSION file; keep full tag for release
+            if [[ "$TAG" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+              SEMVER="${BASH_REMATCH[1]}"
+              echo "$SEMVER" > VERSION
+            elif [[ "$TAG" =~ ^v([0-9]+\.[0-9]+\.[0-9]+-.+)$ ]]; then
+              SEMVER="${BASH_REMATCH[1]}"
+            else
+              echo "error: tag must be vX.Y.Z or vX.Y.Z-prerelease" >&2
+              exit 1
+            fi
+            ARTIFACT_VERSION="${TAG#v}"
+          else
+            # workflow_dispatch
+            if [[ -n "$INPUT_VERSION" ]]; then
+              ./scripts/version.sh set "$INPUT_VERSION"
+            elif [[ "$INPUT_BUMP" != "none" ]]; then
+              ./scripts/version.sh bump "$INPUT_BUMP"
+            fi
+            SEMVER=$(./scripts/version.sh print | tr -d '\n')
+            TAG="v${SEMVER}"
+            ARTIFACT_VERSION="$SEMVER"
+
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add VERSION
+            if ! git diff --cached --quiet; then
+              git commit -m "chore(release): ${TAG}"
+              git push origin HEAD:main
+            fi
+            # Create annotated tag if missing
+            if git rev-parse "$TAG" >/dev/null 2>&1; then
+              echo "Tag $TAG already exists — releasing that ref"
+            else
+              git tag -a "$TAG" -m "Release ${TAG}"
+              git push origin "$TAG"
+            fi
+          fi
+
+          echo "semver=$SEMVER" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "artifact_version=$ARTIFACT_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Resolved tag=$TAG artifact_version=$ARTIFACT_VERSION"
+
+  bake:
+    name: edition ${{ matrix.edition }}
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        edition: [1, 2, 3, 4]
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+
+      - name: Install tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq genisoimage xorriso make || true
+
+      - name: Make and bake
+        env:
+          EDITION: ${{ matrix.edition }}
+          VERSION: ${{ needs.prepare.outputs.artifact_version }}
+          GIT_SHA: ${{ github.sha }}
+          MOCK_ONLY: "0"
+        run: |
+          chmod +x scripts/*.sh make-and-bake.sh
+          make bake EDITION="${{ matrix.edition }}"
+          ls -la out/
+          find out -type f -size 0 -print -exec false {} +
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-edition-${{ matrix.edition }}-${{ needs.prepare.outputs.tag }}
+          path: out/*
+          if-no-files-found: error
+          retention-days: 30
+
+  test-matrix:
+    name: test all artifacts
+    needs: [prepare, bake]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          pattern: release-edition-*
+          merge-multiple: true
+      - run: |
+          chmod +x scripts/test-artifacts.sh
+          OUT_DIR="$PWD/out" ./scripts/test-artifacts.sh
+
+  publish:
+    name: GitHub Release ${{ needs.prepare.outputs.tag }}
+    needs: [prepare, bake, test-matrix]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+
+      - name: Download assets
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          pattern: release-edition-*
+          merge-multiple: true
+
+      - name: Guard non-empty assets
+        run: |
+          find release-assets -type f | sort
+          find release-assets -type f -size 0 -print -exec false {} +
+          # Write release notes snippet
+          {
+            echo "## Warble Linux ${{ needs.prepare.outputs.tag }}"
+            echo ""
+            echo "Semver **${{ needs.prepare.outputs.artifact_version }}** · editions 1–4"
+            echo ""
+            echo "| Artifact | Description |"
+            echo "|----------|-------------|"
+            echo "| \`*.iso\` | Live image (mock on Ubuntu CI without mkarchiso) |"
+            echo "| \`*-wsl2-*.tar.gz\` | WSL-style rootfs tarball |"
+            echo "| \`*.ovf\` / \`*.box\` | OVF stub / Vagrant box stub |"
+            echo "| \`MANIFEST-*\` / \`SHA256SUMS-*\` | Build metadata + checksums |"
+            echo ""
+            echo "Verify:"
+            echo '```bash'
+            echo "sha256sum -c SHA256SUMS-full-${{ needs.prepare.outputs.artifact_version }}.txt"
+            echo '```'
+            echo ""
+            echo "Rebuild: \`VERSION=${{ needs.prepare.outputs.artifact_version }} make release-check\`"
+            if [[ -f CHANGELOG.md ]]; then
+              echo ""
+              echo "### Changelog"
+              echo ""
+              # Extract section for this version if present
+              awk -v ver="${{ needs.prepare.outputs.semver }}" '
+                $0 ~ "^## \\[" ver "\\]" {p=1; print; next}
+                p && $0 ~ /^## \[/ {exit}
+                p {print}
+              ' CHANGELOG.md || true
+            fi
+          } > release-body.md
+          cat release-body.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          name: "Warble Linux ${{ needs.prepare.outputs.tag }}"
+          body_path: release-body.md
+          files: release-assets/*
+          prerelease: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.prerelease == 'true' }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          make_latest: ${{ !(github.event_name == 'workflow_dispatch' && github.event.inputs.prerelease == 'true') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
