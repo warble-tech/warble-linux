@@ -1,0 +1,11 @@
+# Optional real-ISO bake environment (Arch + archiso).
+# Usage: ./scripts/docker-bake.sh EDITION=1
+FROM archlinux:latest
+
+RUN pacman -Syu --noconfirm && \
+    pacman -S --noconfirm archiso git make which tar gzip && \
+    pacman -Scc --noconfirm
+
+WORKDIR /src
+# Caller mounts the repo at /src and runs make-and-bake as root inside.
+CMD ["bash", "-lc", "make bake"]

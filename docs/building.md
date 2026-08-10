@@ -52,22 +52,31 @@ The bake script only calls `mkarchiso` when:
 
 Otherwise it falls back to mock artifacts automatically.
 
-## Completing the archiso profile
+## Bootloaders (landed)
 
-Copy structure from Arch’s official releng profile:
+`profile/syslinux`, `profile/grub`, and `profile/efiboot` are vendored from
+archiso **releng** and rebranded. Details: [bootloaders.md](bootloaders.md).
 
 ```bash
-# On an Arch system with archiso installed:
-cp -a /usr/share/archiso/configs/releng/syslinux profile/
-cp -a /usr/share/archiso/configs/releng/grub profile/
-cp -a /usr/share/archiso/configs/releng/efiboot profile/  # if present
-# Then adjust labels / menus for Warble Linux
+./scripts/sync-bootloaders.sh   # refresh from upstream + re-apply branding
 ```
 
 Also verify:
 
 - `profile/packages.x86_64` is generated from `editions/*.packages` (do not hand-edit long-term)
 - Live user / network / display defaults under `profile/airootfs/`
+
+## Docker real bake (optional)
+
+If you have Docker but not a native Arch host:
+
+```bash
+EDITION=1 ./scripts/docker-bake.sh
+```
+
+This builds an Arch container with `archiso`, mounts the repo, and runs
+`make bake`. Needs **privileged** mode, network for pacman, and substantial
+disk/time. Inspect `MANIFEST-*.txt` for `mock=no` after success.
 
 ## Environment variables
 

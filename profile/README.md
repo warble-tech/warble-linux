@@ -1,6 +1,7 @@
 # archiso profile
 
-This directory is an [archiso](https://wiki.archlinux.org/title/Archiso) profile.
+This directory is an [archiso](https://wiki.archlinux.org/title/Archiso) profile
+for **Warble Linux** live images.
 
 | Path | Role |
 |------|------|
@@ -8,8 +9,31 @@ This directory is an [archiso](https://wiki.archlinux.org/title/Archiso) profile
 | `pacman.conf` | pacman config used during `mkarchiso` |
 | `packages.x86_64` | **Generated** by `scripts/make-and-bake.sh` from `editions/` |
 | `airootfs/` | Overlay root filesystem for the live image |
+| `syslinux/` | BIOS boot menus (from archiso releng, rebranded) |
+| `grub/` | UEFI GRUB configs (from archiso releng, rebranded) |
+| `efiboot/` | systemd-boot style EFI loader entries |
+| `BOOTLOADERS.NOTICE` | Upstream provenance for bootloader trees |
 
-## WIP
+## Real bake (Arch host)
 
-Copy `syslinux/` and `grub/` (and related EFI bits) from Arch’s **releng** profile
-before a real bake will succeed. See [docs/building.md](../docs/building.md).
+```bash
+sudo pacman -S archiso
+cd /path/to/warble-linux
+make bake EDITION=4
+```
+
+Requires: network (pacman mirrors), root/sudo for `mkarchiso`, ~10–20 GB free disk.
+
+## Refresh bootloaders
+
+```bash
+./scripts/sync-bootloaders.sh
+```
+
+## Docker (optional)
+
+```bash
+./scripts/docker-bake.sh EDITION=1
+```
+
+See [docs/building.md](../docs/building.md).

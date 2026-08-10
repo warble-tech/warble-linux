@@ -1,0 +1,12 @@
+Bootloader configuration under syslinux/, grub/, and efiboot/ is adapted from
+Arch Linux archiso "releng" profile:
+
+  https://github.com/archlinux/archiso
+  configs/releng/{syslinux,grub,efiboot}
+
+archiso is licensed under GPL-3.0-or-later (see upstream). Menu titles and help
+text were rebranded for Warble Linux; kernel command-line tokens required by
+archiso (archisobasedir, archisosearchuuid, %INSTALL_DIR%, etc.) are unchanged.
+
+To refresh from upstream on an Arch host:
+  ./scripts/sync-bootloaders.sh
